@@ -1,0 +1,28 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Little Tools",
+  "version": "0.1.0",
+  "identifier": "com.frank.littletools",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "cd ../little_backend && uv run python -m uvicorn main:app --reload --port 8756 & npm run dev",
+    "beforeBuildCommand": "cd ../little_backend && uv run pyinstaller --onefile --name little_backend --distpath ../little_frontend/src-tauri/binaries main.py"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Little Tools",
+        "width": 1200,
+        "height": 800
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "msi", "dmg"]
+  }
+}

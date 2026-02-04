@@ -1,0 +1,108 @@
+# === Environment & Secrets ===
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+
+# === Python (little_backend) ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+*.manifest
+*.spec
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+virtualenv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+# PyInstaller (built sidecars)
+little_frontend/src-tauri/binaries/*
+!little_frontend/src-tauri/binaries/.gitkeep
+
+# === Node.js / TypeScript (little_frontend) ===
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# === Rust / Tauri ===
+# Target directory (build artifacts)
+**/target/
+# But keep Cargo.lock for reproducible builds in applications
+!**/Cargo.lock
+
+# WASM (if you add little_wasm later)
+**/pkg/
+wasm-pack-log.json
+
+# === IDE & Editors ===
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+
+# === OS Generated ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# === Archives ===
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# === Temporary Files ===
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+
+# === Documentation Build ===
+/site
+/docs/_build
