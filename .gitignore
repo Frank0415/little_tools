@@ -106,3 +106,5 @@ Desktop.ini
 # === Documentation Build ===
 /site
 /docs/_build
+
+*.md
