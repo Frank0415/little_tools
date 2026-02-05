@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getAssignments, Assignment } from "../lib/api";
 
 type CourseAssignmentsProps = {
@@ -39,6 +39,38 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
   const [assignmentNotifications, setAssignmentNotifications] = useState<Record<string, boolean>>({});
+  const [panelWidth, setPanelWidth] = useState(420);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 300 && newWidth < window.innerWidth * 0.9) {
+        setPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = 'default';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startResizing = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  };
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     unfinished: true,
     ddl: true,
@@ -148,7 +180,7 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
   }
   
   if (normalUnfinished.length > 0) {
-    groups.push({ id: 'unfinished', name: 'Unfinished Assignments', assignments: normalUnfinished });
+    groups.push({ id: 'unfinished', name: 'Unfinished Assignments', assignments: normalUnfinished, isDDL:true });
   }
   
   if (finished.length > 0) {
@@ -180,7 +212,13 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
   return (
     <>
       {selectedAssignment && !panelCollapsed && (
-        <div className="assignment-detail-panel">
+        <div className="assignment-detail-panel" style={{ width: panelWidth }}>
+          <div 
+            className="resize-handle"
+            onMouseDown={startResizing}
+            onDoubleClick={() => setPanelWidth(420)}
+            title="Double click to reset width"
+          />
           <button className="close-btn" onClick={() => setSelectedAssignment(null)}>×</button>
           <button className="panel-toggle" onClick={() => setPanelCollapsed(true)}>↘</button>
           <h3>{selectedAssignment.name}</h3>
@@ -241,38 +279,46 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
               {refreshStatus}
             </div>
           )}
-          {groups.map(group => (
-            <div key={group.id} className={`folder-node ${group.isDDL ? 'ddl-group' : ''}`}>
-               <div 
-                 className="folder-header" 
-                 onClick={() => toggleGroup(group.id)}
-                 style={group.isDDL ? { color: '#ff4d4d' } : undefined}
-               >
-                 <span className="expand-icon">{expandedGroups[group.id] ? "▾" : "▸"}</span>
-                 <span className="folder-name">{group.name} ({group.assignments.length})</span>
-               </div>
-               
-               {expandedGroups[group.id] && (
-                 <div className="folder-content">
-                   <div className="file-list-container">
+          {groups.map(group => {
+            const isUnfinishedGroup = group.id === 'unfinished';
+            const isDDLGroup = group.id === 'ddl';
+            
+            return (
+              <div key={group.id} className={`folder-node ${group.isDDL ? 'ddl-group' : ''}`}>
+                <div 
+                  className="folder-header" 
+                  onClick={() => toggleGroup(group.id)}
+                  style={group.isDDL ? { color: '#ff4d4d', borderLeft: '6px solid #ff4d4d' } : undefined}
+                >
+                  <span className={`expand-icon ${(isUnfinishedGroup || isDDLGroup) ? 'unfinished' : ''}`}>
+                    {expandedGroups[group.id] ? "▾" : "▸"}
+                  </span>
+                  <span className="folder-name">{group.name} ({group.assignments.length})</span>
+                </div>
+                
+                {expandedGroups[group.id] && (
+                  <div className="folder-content">
+                    <div className="file-list-container">
                       {group.assignments.map(a => {
                         const isUnfinished = group.id === 'unfinished';
+                        const isDDL = group.id === 'ddl';
                         return (
-                        <div 
-                          key={a.id} 
-                          className={`assignment-item ${selectedAssignment?.id === a.id ? 'selected' : ''} ${isUnfinished ? 'unfinished' : ''}`}
-                          onClick={() => handleSelectAssignment(a)}
-                        >
-                          <span className="assignment-name">{a.name}</span>
-                          <span className="assignment-date">{formatYmd(a.due_at)}</span>
-                        </div>
-                      );
+                          <div 
+                            key={a.id} 
+                            className={`assignment-item ${selectedAssignment?.id === a.id ? 'selected' : ''} ${(isUnfinished || isDDL) ? 'unfinished' : ''}`}
+                            onClick={() => handleSelectAssignment(a)}
+                          >
+                            <span className="assignment-name">{a.name}</span>
+                            <span className="assignment-date">{formatYmd(a.due_at)}</span>
+                          </div>
+                        );
                       })}
-                   </div>
-                 </div>
-               )}
-            </div>
-          ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </>

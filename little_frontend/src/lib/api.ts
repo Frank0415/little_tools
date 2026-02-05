@@ -90,6 +90,24 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
+export interface ScheduleConfig {
+  day: number;
+  interval: number;
+  end_mode: "count" | "date" | "weeks";
+  count?: number;
+  until_date?: string;
+}
+
+export interface ICSEvent {
+  title: string;
+  location?: string;
+  description?: string;
+  start_date: string;
+  start_time: string;
+  end_time: string;
+  schedules: ScheduleConfig[];
+}
+
 export async function getSettings(): Promise<Settings> {
   const response = await fetch(`${API_BASE_URL}/api/settings`);
   if (!response.ok) {
@@ -155,6 +173,19 @@ export async function getAssignments(courseId: number): Promise<Assignment[]> {
     throw new Error("Failed to fetch assignments");
   }
   return response.json();
+}
+
+export async function generateICS(events: ICSEvent[]): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/ics/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(events),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to generate ICS");
+  }
+  const data = await response.json();
+  return data.content;
 }
 
 export async function getTaskStatus(taskId: string): Promise<DownloadTask> {

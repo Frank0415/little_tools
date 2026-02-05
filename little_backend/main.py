@@ -8,6 +8,7 @@ from core.canvas_client import CanvasClient
 from modules.downloader.downloader import downloader_instance
 from modules.downloader.models import DownloadTask
 from modules.system_stats import get_system_stats
+from modules.ics.generator import ICSEventRequest, generate_ics_content
 
 app = FastAPI()
 
@@ -98,6 +99,15 @@ async def get_task_status(task_id: str):
 async def list_all_tasks():
     """List all download tasks."""
     return downloader_instance.get_all_tasks()
+
+@app.post("/api/ics/generate")
+async def generate_ics(events: List[ICSEventRequest]):
+    """Generate and return ICS file content."""
+    try:
+        content = generate_ics_content(events)
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/canvas/courses/{course_id}/assignments")
 async def list_assignments(course_id: int):

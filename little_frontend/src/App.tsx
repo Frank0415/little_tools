@@ -5,6 +5,7 @@ import { CanvasSettings } from "./components/Settings";
 import { NotionSettings } from "./components/NotionSettings";
 import { CourseList } from "./components/CourseList";
 import { Home } from "./components/Home";
+import { ICSGenerator } from "./components/ICSGenerator";
 import "./App.css";
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   const updateTasks = useDownloadStore((s) => s.updateTasks);
   const startPollingTask = useDownloadStore((s) => s.startPollingTask);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeApp, setActiveApp] = useState<"home" | "canvas" | "notion">("home");
+  const [activeApp, setActiveApp] = useState<"home" | "canvas" | "notion" | "ics">("home");
   const [settingsVersion, setSettingsVersion] = useState(0);
 
   useEffect(() => {
@@ -67,6 +68,15 @@ function App() {
           >
             Notion Sync
           </button>
+          <button
+            className={`sidebar-item ${activeApp === "ics" ? "active" : ""}`}
+            onClick={() => {
+              setActiveApp("ics");
+              setShowSettings(false);
+            }}
+          >
+            ICS Generator
+          </button>
         </nav>
         <div className="sidebar-footer">v0.1.0</div>
       </aside>
@@ -87,14 +97,18 @@ function App() {
                 ? ""
                 : activeApp === "canvas"
                 ? "Canvas Assistant"
-                : "Notion Sync"}
+                : activeApp === "notion"
+                ? "Notion Sync"
+                : "ICS Generator"}
             </h1>
             <p>
               {activeApp === "home"
                 ? ""
                 : activeApp === "canvas"
                 ? "Manage course file downloads and submissions."
-                : "Configure Notion integration settings."}
+                : activeApp === "notion"
+                ? "Configure Notion integration settings."
+                : "Create recurring calendar events for your schedule."}
             </p>
           </div>
         </header>
@@ -120,6 +134,8 @@ function App() {
                 <Home />
             ) : activeApp === "canvas" ? (
               <CourseList settingsVersion={settingsVersion} />
+            ) : activeApp === "ics" ? (
+              <ICSGenerator />
             ) : (
               <div className="empty-state">
                 <h3>Notion Sync</h3>
