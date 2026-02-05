@@ -6,14 +6,15 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from core.config import get_settings
+from core.config import get_settings, get_config_path
 from core.canvas_client import CanvasClient
 from .models import DownloadTask, TaskStatus
 
 class MetadataManager:
-    def __init__(self, course_dir: Path):
-        self.course_dir = course_dir
-        self.meta_file = course_dir / ".canvas_metadata.json"
+    def __init__(self, course_id: int):
+        self.course_id = course_id
+        # Store metadata in the app's config/cache directory instead of the download directory
+        self.meta_file = get_config_path() / "metadata" / f"course_{course_id}.json"
         self.data = self._load()
 
     def _load(self) -> Dict[str, Any]:
@@ -26,7 +27,7 @@ class MetadataManager:
         return {"files": {}}
 
     def save(self):
-        self.course_dir.mkdir(parents=True, exist_ok=True)
+        self.meta_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.meta_file, "w") as f:
             json.dump(self.data, f, indent=2)
 
@@ -122,7 +123,7 @@ class Downloader:
                 course_name = course_info.get("name", f"Course_{course_id}")
             
             course_dir = settings.download_dir / course_name
-            meta_mgr = MetadataManager(course_dir)
+            meta_mgr = MetadataManager(course_id)
 
             folders = await self.client.get_folders(course_id)
             all_files = []
@@ -183,7 +184,7 @@ class Downloader:
                 course_name = course_info.get("name", f"Course_{course_id}")
 
             course_dir = settings.download_dir / course_name
-            meta_mgr = MetadataManager(course_dir)
+            meta_mgr = MetadataManager(course_id)
             
             folders = await self.client.get_folders(course_id)
             folder_map = {f.get("id"): (f.get("name") or "") for f in folders}
