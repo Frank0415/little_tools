@@ -1,50 +1,120 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useState, useEffect } from "react";
+import { useHealth } from "./hooks/useHealth";
+import { CanvasSettings } from "./components/Settings";
+import { NotionSettings } from "./components/NotionSettings";
+import { CourseList } from "./components/CourseList";
+import { Home } from "./components/Home";
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const isOnline = useHealth();
+  const [showSettings, setShowSettings] = useState(false);
+  const [activeApp, setActiveApp] = useState<"home" | "canvas" | "notion">("home");
+  const [settingsVersion, setSettingsVersion] = useState(0);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  // Debug: Log to console
+  useEffect(() => {
+    console.log("App mounted, isOnline:", isOnline);
+  }, [isOnline]);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-title">Little Tools</div>
+        <nav className="sidebar-nav">
+          <button
+            className={`sidebar-item ${activeApp === "home" ? "active" : ""}`}
+            onClick={() => {
+              setActiveApp("home");
+              setShowSettings(false);
+            }}
+          >
+            Home
+          </button>
+          <button
+            className={`sidebar-item ${activeApp === "canvas" ? "active" : ""}`}
+            onClick={() => {
+              setActiveApp("canvas");
+              setShowSettings(false);
+            }}
+          >
+            Canvas Downloader
+          </button>
+          <button
+            className={`sidebar-item ${activeApp === "notion" ? "active" : ""}`}
+            onClick={() => {
+              setActiveApp("notion");
+              setShowSettings(false);
+            }}
+          >
+            Notion Sync
+          </button>
+        </nav>
+        <div className="sidebar-footer">v0.1.0</div>
+      </aside>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      <main className="main-content">
+        <header className="topbar">
+          <div className="status-bar">
+            <span className={`status-indicator ${isOnline ? "online" : "offline"}`}>
+              {isOnline ? "● Online" : "● Offline"}
+            </span>
+            <button onClick={() => setShowSettings(!showSettings)}>
+              {showSettings ? "Back to Home" : "Settings"}
+            </button>
+          </div>
+          <div className="page-title">
+            <h1>
+              {activeApp === "home"
+                ? ""
+                : activeApp === "canvas"
+                ? "Canvas Downloader"
+                : "Notion Sync"}
+            </h1>
+            <p>
+              {activeApp === "home"
+                ? ""
+                : activeApp === "canvas"
+                ? "Manage course file downloads and submissions."
+                : "Configure Notion integration settings."}
+            </p>
+          </div>
+        </header>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+        {showSettings ? (
+          activeApp === "canvas" ? (
+            <CanvasSettings onSaved={() => setSettingsVersion((v) => v + 1)} />
+          ) : activeApp === "notion" ? (
+            <NotionSettings />
+          ) : (
+            <div className="empty-state">
+              <h3>No settings for this app</h3>
+              <p>This app does not require additional settings.</p>
+            </div>
+          )
+        ) : (
+          <div className="home-content">
+            {!isOnline ? (
+              <div className="warning">
+                Backend is offline. Please ensure the Python sidecar is running.
+              </div>
+            ) : activeApp === "home" ? (
+              <Home
+                onNavigateToArch={() => {}}
+                onTriggerAurUpgrade={() => {}}
+              />
+            ) : activeApp === "canvas" ? (
+              <CourseList settingsVersion={settingsVersion} />
+            ) : (
+              <div className="empty-state">
+                <h3>Notion Sync</h3>
+                <p>Open Settings to configure Notion integration.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
 
