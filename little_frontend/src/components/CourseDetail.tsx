@@ -1,10 +1,14 @@
 import { useState, useEffect, ReactElement } from "react";
 import { getCourseFiles, CourseFile, startDownload, startSelectedDownload } from "../lib/api";
 import { useDownloadStore } from "../store/useDownloadStore";
+import { CourseAssignments } from "./CourseAssignments";
 
 type CourseDetailProps = {
   courseId: number;
   courseName: string;
+  notify?: boolean;
+  initialView?: "files" | "assignments";
+  assignmentsRefreshToken?: number;
   onBack: () => void;
 };
 
@@ -16,7 +20,15 @@ type FolderNode = {
   subfolders: Record<string, FolderNode>;
 };
 
-export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps) {
+export function CourseDetail({
+  courseId,
+  courseName,
+  notify = true,
+  initialView = "files",
+  assignmentsRefreshToken,
+  onBack,
+}: CourseDetailProps) {
+  const [view, setView] = useState<"files" | "assignments">(initialView);
   const [files, setFiles] = useState<CourseFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +39,10 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
   const startPollingTask = useDownloadStore((s) => s.startPollingTask);
 
   useEffect(() => {
-    loadFiles();
-  }, [courseId]);
+    if (view === "files") {
+      loadFiles();
+    }
+  }, [courseId, view]);
 
   const loadFiles = async () => {
     setLoading(true);
@@ -232,34 +246,67 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
     );
   };
 
-  if (loading) return <div className="loading">Loading files...</div>;
-
   const tree = buildFileTree();
 
   return (
     <div className="course-detail">
       <div className="course-detail-header">
-        <button onClick={onBack} className="back-btn">
-          ← Back to Courses
-        </button>
-        <h2>{courseName}</h2>
-        <div className="course-detail-actions">
-          <button onClick={handleDownloadAll}>Download All</button>
-          <button className="secondary-btn" onClick={handleDownloadSelected}>
-            Download Selected
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+          <button onClick={onBack} className="back-btn">
+            ← Back
           </button>
+          <h2>{courseName}</h2>
         </div>
-      </div>
 
-      {error && <div className="error">{error}</div>}
+        <div className="view-switcher" style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
+             <button 
+               className={view === "files" ? "" : "secondary-btn"} 
+               onClick={() => setView("files")}
+             >
+               Files
+             </button>
+             <button 
+               className={view === "assignments" ? "" : "secondary-btn"} 
+               onClick={() => setView("assignments")}
+             >
+               Assignments
+             </button>
+        </div>
 
-      <div className="file-tree-container">
-        {files.length === 0 ? (
-          <div className="empty-state">No files found in this course.</div>
-        ) : (
-          renderFolder(tree, true)
+        {view === "files" && (
+          <div className="course-detail-actions">
+            <button onClick={handleDownloadAll}>All</button>
+            <button className="secondary-btn" onClick={handleDownloadSelected}>
+              Selected
+            </button>
+          </div>
         )}
       </div>
+
+      {view === "files" ? (
+        <>
+            {loading ? (
+                <div className="loading">Loading files...</div>
+            ) : (
+                <>
+                {error && <div className="error">{error}</div>}
+                <div className="file-tree-container">
+                    {files.length === 0 ? (
+                    <div className="empty-state">No files found in this course.</div>
+                    ) : (
+                    renderFolder(tree, true)
+                    )}
+                </div>
+                </>
+            )}
+        </>
+      ) : (
+        <CourseAssignments
+          courseId={courseId}
+          notify={notify}
+          refreshToken={assignmentsRefreshToken}
+        />
+      )}
 
       {Object.values(tasks).length > 0 && (
         <div className="active-downloads">

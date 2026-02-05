@@ -19,6 +19,7 @@ class CoursePair(BaseModel):
 
     name: str = Field(description="Course name")
     id: int = Field(description="Canvas course id")
+    notify: bool = Field(default=True, description="Whether to notify for deadlines")
 
 
 class Settings(BaseModel):

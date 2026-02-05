@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSystemStats, SystemStats } from "../lib/api";
+import { getSystemStats, SystemStats, getSettings, getAssignments } from "../lib/api";
 
 type HomeProps = {
   onNavigateToArch: () => void;
@@ -32,6 +32,7 @@ export function Home({ onNavigateToArch, onTriggerAurUpgrade }: HomeProps) {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Array<{ course: string; assignment: string; due: string }>>([]);
 
   const loadStats = async () => {
     setError(null);
@@ -48,6 +49,45 @@ export function Home({ onNavigateToArch, onTriggerAurUpgrade }: HomeProps) {
   useEffect(() => {
     loadStats();
     const interval = setInterval(loadStats, 1000); // Update every 1 second
+    
+    // Check deadlines
+    const checkDeadlines = async () => {
+        try {
+            const settings = await getSettings();
+            if (!settings?.courses) return;
+            
+            const alerts: Array<{ course: string; assignment: string; due: string }> = [];
+            
+            for (const course of settings.courses) {
+                if (course.notify === false) continue;
+
+                try {
+                    const asses = await getAssignments(course.id);
+                    const now = Date.now();
+                    
+                    asses.forEach(a => {
+                        const status = a.submission?.workflow_state;
+                        const isFinished = status === 'submitted' || status === 'graded' || status === 'pending_review';
+                        
+                        if (!isFinished && a.due_at) {
+                            const due = new Date(a.due_at).getTime();
+                            if (due < now || (due - now < 24 * 3600 * 1000)) {
+                                alerts.push({
+                                    course: course.name,
+                                    assignment: a.name,
+                                    due: a.due_at
+                                });
+                            }
+                        }
+                    });
+                } catch (e) { console.error(e) } 
+            }
+            setNotifications(alerts.sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime()));
+        } catch (e) { console.error(e) }
+    };
+    
+    checkDeadlines();
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -74,7 +114,25 @@ export function Home({ onNavigateToArch, onTriggerAurUpgrade }: HomeProps) {
         {error && <div className="error">{error}</div>}
 
         {!loading && stats && (
-          <div className="stats-grid">
+          <div className="stats-container">
+            {notifications.length > 0 && (
+                <div className="notifications-alert">
+                    <div className="alert-header">🚨 Upcoming Deadlines</div>
+                    <div className="alert-list">
+                    {notifications.map((n, i) => (
+                        <div key={i} className="alert-item">
+                            <span className="course">{n.course}</span>
+                            <span className="task">{n.assignment}</span>
+                            <span className="due">
+                                {new Date(n.due).getTime() < Date.now() ? "OVERDUE" : "due in " + Math.ceil((new Date(n.due).getTime() - Date.now()) / (3600*1000)) + "h"}
+                            </span>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+            )}
+            
+            <div className="stats-grid">
             {/* System Info */}
             <div className="stat-card">
               <div className="stat-icon">💻</div>
@@ -168,6 +226,7 @@ export function Home({ onNavigateToArch, onTriggerAurUpgrade }: HomeProps) {
                 </div>
               </div>
             )}
+          </div>
           </div>
         )}
       </div>

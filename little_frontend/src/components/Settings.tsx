@@ -5,12 +5,18 @@ type CanvasSettingsProps = {
   onSaved?: () => void;
 };
 
+type CourseRow = {
+  name: string;
+  id: string;
+  notify: boolean;
+};
+
 export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [courseRows, setCourseRows] = useState<Array<{ name: string; id: string }>>([]);
+  const [courseRows, setCourseRows] = useState<CourseRow[]>([]);
 
   useEffect(() => {
     getSettings()
@@ -19,8 +25,9 @@ export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
         const rows = (data.courses || []).map((course) => ({
           name: course.name,
           id: String(course.id),
+          notify: course.notify !== false, // Default to true
         }));
-        setCourseRows(rows.length > 0 ? rows : [{ name: "", id: "" }]);
+        setCourseRows(rows.length > 0 ? rows : [{ name: "", id: "", notify: true }]);
         setLoading(false);
       })
       .catch((err) => {
@@ -42,6 +49,7 @@ export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
         .map((row) => ({
           name: row.name.trim(),
           id: Number(row.id),
+          notify: row.notify,
         }));
 
       if (normalizedCourses.some((course) => Number.isNaN(course.id))) {
@@ -65,14 +73,14 @@ export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
     setSettings((prev) => (prev ? { ...prev, [name]: value } : null));
   };
 
-  const updateCourseRow = (index: number, field: "name" | "id", value: string) => {
+  const updateCourseRow = (index: number, field: keyof CourseRow, value: any) => {
     setCourseRows((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
   };
 
   const addCourseRow = () => {
-    setCourseRows((prev) => [...prev, { name: "", id: "" }]);
+    setCourseRows((prev) => [...prev, { name: "", id: "", notify: true }]);
   };
 
   const removeCourseRow = (index: number) => {
@@ -128,13 +136,14 @@ export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
         <div className="form-group">
           <label>Courses (Name + ID)</label>
           <div className="course-table">
-            <div className="course-table-header">
+            <div className="course-table-header" style={{ gridTemplateColumns: "1fr 100px 80px 100px" }}>
               <span>Course Name</span>
               <span>Course ID</span>
+              <span>Notify</span>
               <span>Actions</span>
             </div>
             {courseRows.map((row, index) => (
-              <div key={index} className="course-table-row">
+              <div key={index} className="course-table-row" style={{ gridTemplateColumns: "1fr 100px 80px 100px" }}>
                 <input
                   type="text"
                   placeholder="e.g. ENGR496"
@@ -147,6 +156,13 @@ export function CanvasSettings({ onSaved }: CanvasSettingsProps) {
                   value={row.id}
                   onChange={(e) => updateCourseRow(index, "id", e.target.value)}
                 />
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={row.notify}
+                    onChange={(e) => updateCourseRow(index, "notify", e.target.checked)}
+                  />
+                </div>
                 <div className="row-actions">
                   <button
                     type="button"

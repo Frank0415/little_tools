@@ -10,6 +10,7 @@
   --success: #10b981;
   --error: #ef4444;
   --archlinux: #1793d1;
+    --archlinux-transparent: #1793d180;
   --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
@@ -309,7 +310,7 @@ input:focus {
 
 .course-table-header {
   display: grid;
-  grid-template-columns: 1fr 1fr 150px;
+  grid-template-columns: 1fr 1fr 160px 180px;
   background-color: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
   padding: 0.75rem 1rem;
@@ -320,7 +321,7 @@ input:focus {
 
 .course-table-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 150px;
+  grid-template-columns: 1fr 1fr 160px 180px;
   padding: 0.75rem 1rem;
   gap: 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -483,7 +484,7 @@ input:focus {
 .folder-node {
   margin-left: 8px;
   border-left: 1px solid var(--border-color);
-  padding-left: 8px;
+  padding-left: 0px;
   margin-top: 4px;
   border-radius: 4px;
   /* Stacking background to creates depth gradient */
@@ -504,13 +505,14 @@ input:focus {
   align-items: center;
   gap: 6px;
   padding: 4px 6px;
-  border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.1s;
+  border-left: 3px solid var(--archlinux);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .folder-header:hover {
-  background-color: rgba(255, 255, 255, 0.05); /* Highlight on hover */
+  background-color: rgba(255, 255, 255, 0.15); /* Highlight on hover */
 }
 
 .expand-btn {
@@ -629,3 +631,145 @@ input:focus {
 
 
 
+
+/* Assignment View Styles */
+.assignments-container {
+  display: flex;
+  height: calc(100vh - 8rem);
+  flex: 1;
+  overflow: hidden;
+}
+
+.assignments-list {
+  flex: 1;
+  overflow-y: auto;
+  border-right: 1px solid var(--border-color);
+}
+
+.assignment-detail-panel {
+  width: 400px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  padding: 1.5rem;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.ddl-group .folder-name {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row .label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.detail-description {
+  margin-top: 2rem;
+}
+
+.detail-description h4 {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.assignment-item:hover {
+  background-color: var(--hover-color);
+}
+
+.assignment-item.selected {
+  background-color: var(--hover-color);
+  border-left: 3px solid var(--archlinux);
+}
+
+.assignment-name {
+  flex: 1;
+  padding-right: 1rem;
+}
+
+.assignment-date {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: right;
+  min-width: 110px;
+}
+
+/* Home Notification Styles */
+.notifications-alert {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+}
+
+.alert-header {
+  color: #ff6b6b;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 107, 107, 0.1);
+}
+
+.alert-item:last-child {
+  border-bottom: none;
+}
+
+.alert-item .course {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.alert-item .due {
+  color: #ff6b6b;
+  font-weight: 600;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.course-tabs {
+  margin: 0 1rem;
+}

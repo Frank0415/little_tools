@@ -87,11 +87,8 @@ class CanvasClient:
 
     async def get_assignments(self, course_id: int) -> List[dict]:
         url = self._get_api_url(f"courses/{course_id}/assignments")
-        params = {"per_page": 100}
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers, params=params)
-            response.raise_for_status()
-            return response.json()
+        params = {"per_page": 100, "include[]": "submission"}
+        return await self._get_paginated(url, params)
 
     async def upload_file_to_submission(self, course_id: int, assignment_id: int, file_path: Path) -> int:
         """Upload a file for an assignment submission.

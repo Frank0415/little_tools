@@ -15,6 +15,10 @@ function App() {
   const [activeApp, setActiveApp] = useState<"home" | "canvas" | "notion">("home");
   const [settingsVersion, setSettingsVersion] = useState(0);
 
+  useEffect(() => {
+    sessionStorage.setItem("assignments_refresh_token", Date.now().toString());
+  }, []);
+
   // Initial sync and auto-polling for active tasks
   useEffect(() => {
     if (isOnline) {

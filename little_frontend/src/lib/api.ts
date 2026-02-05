@@ -6,7 +6,7 @@ export interface Settings {
   notion_token: string | null;
   download_dir: string;
   temp_dir: string;
-  courses: Array<{ name: string; id: number }>;
+  courses: Array<{ name: string; id: number; notify?: boolean }>;
 }
 
 export interface Course {
@@ -18,8 +18,16 @@ export interface Course {
 export interface Assignment {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   due_at: string | null;
+  points_possible: number | null;
+  html_url: string;
+  submission?: {
+    workflow_state: string;
+    submitted_at: string | null;
+    grade: string | null;
+    score: number | null;
+  };
 }
 
 export interface DownloadTask {
@@ -141,6 +149,14 @@ export async function startSelectedDownload(courseId: number, fileIds: number[],
   return response.json();
 }
 
+export async function getAssignments(courseId: number): Promise<Assignment[]> {
+  const response = await fetch(`${API_BASE_URL}/api/canvas/courses/${courseId}/assignments`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch assignments");
+  }
+  return response.json();
+}
+
 export async function getTaskStatus(taskId: string): Promise<DownloadTask> {
   const response = await fetch(`${API_BASE_URL}/api/downloader/tasks/${taskId}`);
   if (!response.ok) {
@@ -153,14 +169,6 @@ export async function listAllTasks(): Promise<DownloadTask[]> {
   const response = await fetch(`${API_BASE_URL}/api/downloader/tasks`);
   if (!response.ok) {
     throw new Error("Failed to list all tasks");
-  }
-  return response.json();
-}
-
-export async function getAssignments(courseId: number): Promise<Assignment[]> {
-  const response = await fetch(`${API_BASE_URL}/api/canvas/courses/${courseId}/assignments`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch assignments");
   }
   return response.json();
 }

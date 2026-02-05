@@ -8,9 +8,10 @@ type CourseListProps = {
 };
 
 export function CourseList({ settingsVersion = 0 }: CourseListProps) {
-  const [courses, setCourses] = useState<Array<{ name: string; id: number }>>([]);
+  const [courses, setCourses] = useState<Array<{ name: string; id: number; notify?: boolean }>>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState<{ id: number; name: string } | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<{ id: number; name: string; notify?: boolean; initialView?: "files" | "assignments" } | null>(null);
+  const [assignmentsRefreshToken, setAssignmentsRefreshToken] = useState(0);
 
   const startPollingTask = useDownloadStore((s) => s.startPollingTask);
   const tasks = useDownloadStore((s) => s.tasks);
@@ -33,12 +34,21 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
     }
   };
 
+  const handleRefreshAssignments = () => {
+    const token = Date.now();
+    sessionStorage.setItem("assignments_refresh_token", token.toString());
+    setAssignmentsRefreshToken(token);
+  };
+
 
   if (selectedCourse) {
     return (
       <CourseDetail
         courseId={selectedCourse.id}
         courseName={selectedCourse.name}
+        notify={selectedCourse.notify !== false}
+        initialView={selectedCourse.initialView}
+        assignmentsRefreshToken={assignmentsRefreshToken}
         onBack={() => setSelectedCourse(null)}
       />
     );
@@ -46,7 +56,12 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
 
   return (
     <div className="course-list">
-      <h2>Courses</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2>Courses</h2>
+        <button className="secondary-btn" onClick={handleRefreshAssignments}>
+          Refresh Homework
+        </button>
+      </div>
       {courses.length === 0 ? (
         <div className="empty-state">
           <p>No courses saved. Add them in Settings.</p>
@@ -56,6 +71,7 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
           <div className="course-table-header">
             <span>Course Name</span>
             <span>Course ID</span>
+            <span>Homework</span>
             <span>Actions</span>
           </div>
           {courses.map((course) => (
@@ -63,10 +79,18 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
               <div>{course.name}</div>
               <div>{course.id}</div>
               <div className="row-actions">
+                <button
+                  className="secondary-btn"
+                  onClick={() => setSelectedCourse({ ...course, initialView: "assignments" })}
+                >
+                  View Homework
+                </button>
+              </div>
+              <div className="row-actions">
                 <button onClick={() => handleDownload(course.id)}>Download All</button>
                 <button
                   className="secondary-btn"
-                  onClick={() => setSelectedCourse({ id: course.id, name: course.name })}
+                  onClick={() => setSelectedCourse({ ...course, initialView: "files" })}
                 >
                   Download Details
                 </button>
