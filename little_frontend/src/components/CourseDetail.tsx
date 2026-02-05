@@ -20,6 +20,8 @@ type FolderNode = {
   subfolders: Record<string, FolderNode>;
 };
 
+const FILE_CACHE_TTL_MS = 30 * 60 * 1000;
+
 export function CourseDetail({
   courseId,
   courseName,
@@ -28,9 +30,20 @@ export function CourseDetail({
   assignmentsRefreshToken,
   onBack,
 }: CourseDetailProps) {
+  const readFilesCache = (id: number): { timestamp: number; data: CourseFile[] } | null => {
+    try {
+      const raw = localStorage.getItem(`files_cache_${id}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const initialCache = readFilesCache(courseId);
   const [view, setView] = useState<"files" | "assignments">(initialView);
-  const [files, setFiles] = useState<CourseFile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [files, setFiles] = useState<CourseFile[]>(initialCache?.data ?? []);
+  const [loading, setLoading] = useState(!(initialCache?.data && initialCache.data.length > 0));
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Record<string, boolean>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
@@ -40,17 +53,50 @@ export function CourseDetail({
 
   useEffect(() => {
     if (view === "files") {
+      const cached = readFilesCache(courseId);
+      if (cached?.data) {
+        setFiles(cached.data);
+        const rootFolders = new Set(cached.data.map((f) => (f.folder_name || "").split("/")[0]).filter(Boolean));
+        setExpandedFolders(Object.fromEntries([...rootFolders].map((f) => [f, true])));
+        setLoading(false);
+      }
       loadFiles();
     }
   }, [courseId, view]);
 
-  const loadFiles = async () => {
-    setLoading(true);
+  const loadFiles = async (force = false) => {
+    const cacheKey = `files_cache_${courseId}`;
+    const sessionToken = Number(sessionStorage.getItem("files_refresh_token") || "0");
+    let cached: { timestamp: number; data: CourseFile[] } | null = null;
+
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        cached = JSON.parse(raw);
+      }
+    } catch {
+      cached = null;
+    }
+
+    const now = Date.now();
+    const isStale = !cached || now - cached.timestamp > FILE_CACHE_TTL_MS || cached.timestamp < sessionToken;
+
+    if (cached?.data) {
+      setFiles(cached.data);
+      const rootFolders = new Set(cached.data.map((f) => (f.folder_name || "").split("/")[0]).filter(Boolean));
+      setExpandedFolders(Object.fromEntries([...rootFolders].map((f) => [f, true])));
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    if (!isStale && !force) return;
+
     setError(null);
     try {
       const data = await getCourseFiles(courseId);
       setFiles(data);
-      // Auto-expand root level
+      localStorage.setItem(cacheKey, JSON.stringify({ timestamp: now, data }));
       const rootFolders = new Set(data.map((f) => (f.folder_name || "").split("/")[0]).filter(Boolean));
       setExpandedFolders(Object.fromEntries([...rootFolders].map((f) => [f, true])));
     } catch (err: any) {

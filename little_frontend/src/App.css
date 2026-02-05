@@ -643,16 +643,22 @@ input:focus {
 .assignments-list {
   flex: 1;
   overflow-y: auto;
-  border-right: 1px solid var(--border-color);
+  width: 100%;
 }
 
 .assignment-detail-panel {
-  width: 400px;
-  background: var(--bg-secondary);
+  width: 420px;
+  background: var(--card-bg);
   border-left: 1px solid var(--border-color);
   padding: 1.5rem;
   overflow-y: auto;
-  position: relative;
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  z-index: 2;
+  box-shadow: -12px 0 24px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
 }
 
 .close-btn {
@@ -664,6 +670,29 @@ input:focus {
   font-size: 1.5rem;
   cursor: pointer;
   color: var(--text-secondary);
+}
+
+.panel-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 3rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.panel-expand {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  color: var(--text-primary);
 }
 
 .ddl-group .folder-name {
@@ -696,6 +725,18 @@ input:focus {
   letter-spacing: 0.05em;
 }
 
+.notify-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.notify-checkbox input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
 .assignment-item {
   display: flex;
   justify-content: space-between;
@@ -713,6 +754,16 @@ input:focus {
 .assignment-item.selected {
   background-color: var(--hover-color);
   border-left: 3px solid var(--archlinux);
+}
+
+.assignment-item.unfinished {
+  border-left: 3px solid #ff6b6b;
+  color: #ff6b6b;
+}
+
+.assignment-item.unfinished .assignment-name,
+.assignment-item.unfinished .assignment-date {
+  color: #ff6b6b;
 }
 
 .assignment-name {
@@ -747,7 +798,7 @@ input:focus {
 
 .alert-item {
   display: grid;
-  grid-template-columns: 100px 1fr 100px;
+  grid-template-columns: 1fr 2fr 1fr;
   gap: 1rem;
   align-items: center;
   padding: 0.5rem 0;

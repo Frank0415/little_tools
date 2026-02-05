@@ -12,6 +12,7 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<{ id: number; name: string; notify?: boolean; initialView?: "files" | "assignments" } | null>(null);
   const [assignmentsRefreshToken, setAssignmentsRefreshToken] = useState(0);
+  const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
 
   const startPollingTask = useDownloadStore((s) => s.startPollingTask);
   const tasks = useDownloadStore((s) => s.tasks);
@@ -38,6 +39,9 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
     const token = Date.now();
     sessionStorage.setItem("assignments_refresh_token", token.toString());
     setAssignmentsRefreshToken(token);
+    setRefreshStatus("Refreshing homework...");
+    setTimeout(() => setRefreshStatus("Homework refreshed"), 500);
+    setTimeout(() => setRefreshStatus(null), 2000);
   };
 
 
@@ -57,10 +61,13 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
   return (
     <div className="course-list">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2>Courses</h2>
-        <button className="secondary-btn" onClick={handleRefreshAssignments}>
-          Refresh Homework
-        </button>
+        <h2>   Courses</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {refreshStatus && <span style={{ color: "var(--text-secondary)", fontSize: "12px" }}>{refreshStatus}</span>}
+          <button className="secondary-btn" onClick={handleRefreshAssignments}>
+            Refresh Homework
+          </button>
+        </div>
       </div>
       {courses.length === 0 ? (
         <div className="empty-state">

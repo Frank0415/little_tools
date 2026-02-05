@@ -16,11 +16,29 @@ type AssignmentGroup = {
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
+const getAssignmentNotifications = (): Record<string, boolean> => {
+  try {
+    const raw = localStorage.getItem('assignment_notifications');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const setAssignmentNotification = (assignmentId: number, enabled: boolean) => {
+  const notifications = getAssignmentNotifications();
+  notifications[assignmentId.toString()] = enabled;
+  localStorage.setItem('assignment_notifications', JSON.stringify(notifications));
+};
+
 export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssignmentsProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
+  const [assignmentNotifications, setAssignmentNotifications] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     unfinished: true,
     ddl: true,
@@ -28,15 +46,16 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
 
   useEffect(() => {
     loadAssignments();
+    setAssignmentNotifications(getAssignmentNotifications());
   }, [courseId]);
 
   useEffect(() => {
     if (refreshToken !== undefined) {
-      loadAssignments(true);
+      loadAssignments(true, true);
     }
   }, [refreshToken, courseId]);
 
-  const loadAssignments = async (force = false) => {
+  const loadAssignments = async (force = false, isManual = false) => {
     const cacheKey = `assignments_cache_${courseId}`;
     const sessionToken = Number(sessionStorage.getItem("assignments_refresh_token") || "0");
     let cached: { timestamp: number; data: Assignment[] } | null = null;
@@ -62,12 +81,24 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
 
     if (!isStale && !force) return;
 
+    if (isManual) {
+      setRefreshStatus("Refreshing...");
+    }
+
     try {
       const data = await getAssignments(courseId);
       setAssignments(data);
       localStorage.setItem(cacheKey, JSON.stringify({ timestamp: now, data }));
+      if (isManual) {
+        setRefreshStatus("Updated");
+        setTimeout(() => setRefreshStatus(null), 1500);
+      }
     } catch (err: any) {
       setError(err.message);
+      if (isManual) {
+        setRefreshStatus("Refresh failed");
+        setTimeout(() => setRefreshStatus(null), 1500);
+      }
     } finally {
       setLoading(false);
     }
@@ -131,44 +162,40 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
   if (loading) return <div className="loading">Loading assignments...</div>;
   if (error) return <div className="error">{error}</div>;
 
-  return (
-    <div className="assignments-container" style={{ display: 'flex', height: '100%' }}>
-      <div className="assignments-list" style={{ flex: 1, overflowY: 'auto' }}>
-        {groups.map(group => (
-          <div key={group.id} className={`folder-node ${group.isDDL ? 'ddl-group' : ''}`}>
-             <div 
-               className="folder-header" 
-               onClick={() => toggleGroup(group.id)}
-               style={group.isDDL ? { color: '#ff4d4d' } : undefined}
-             >
-               <span className="expand-icon">{expandedGroups[group.id] ? "▾" : "▸"}</span>
-               <span className="folder-name">{group.name} ({group.assignments.length})</span>
-             </div>
-             
-             {expandedGroups[group.id] && (
-               <div className="folder-content">
-                 <div className="file-list-container">
-                    {group.assignments.map(a => (
-                      <div 
-                        key={a.id} 
-                        className={`assignment-item ${selectedAssignment?.id === a.id ? 'selected' : ''}`}
-                        onClick={() => setSelectedAssignment(a)}
-                      >
-                        <span className="assignment-name">{a.name}</span>
-                        <span className="assignment-date">{formatYmd(a.due_at)}</span>
-                      </div>
-                    ))}
-                 </div>
-               </div>
-             )}
-          </div>
-        ))}
-      </div>
+  const handleSelectAssignment = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setPanelCollapsed(false);
+  };
 
-      {selectedAssignment && (
+  const handleNotificationToggle = (assignmentId: number) => {
+    const current = assignmentNotifications[assignmentId.toString()] ?? true;
+    const newValue = !current;
+    setAssignmentNotification(assignmentId, newValue);
+    setAssignmentNotifications(prev => ({
+      ...prev,
+      [assignmentId.toString()]: newValue
+    }));
+  };
+
+  return (
+    <>
+      {selectedAssignment && !panelCollapsed && (
         <div className="assignment-detail-panel">
           <button className="close-btn" onClick={() => setSelectedAssignment(null)}>×</button>
+          <button className="panel-toggle" onClick={() => setPanelCollapsed(true)}>↘</button>
           <h3>{selectedAssignment.name}</h3>
+          
+          <div className="detail-row">
+            <span className="label">Notify:</span>
+            <label className="notify-checkbox">
+              <input
+                type="checkbox"
+                checked={assignmentNotifications[selectedAssignment.id.toString()] ?? true}
+                onChange={() => handleNotificationToggle(selectedAssignment.id)}
+              />
+              <span>Show in deadline alerts</span>
+            </label>
+          </div>
           
           <div className="detail-row">
             <span className="label">Due Date:</span>
@@ -201,6 +228,53 @@ export function CourseAssignments({ courseId, notify, refreshToken }: CourseAssi
           )}
         </div>
       )}
-    </div>
+      {selectedAssignment && panelCollapsed && (
+        <button className="panel-expand" onClick={() => setPanelCollapsed(false)}>
+          Show Details
+        </button>
+      )}
+      
+      <div className="assignments-container">
+        <div className="assignments-list">
+          {refreshStatus && (
+            <div style={{ padding: "0.5rem 0.75rem", color: "var(--text-secondary)", fontSize: "12px" }}>
+              {refreshStatus}
+            </div>
+          )}
+          {groups.map(group => (
+            <div key={group.id} className={`folder-node ${group.isDDL ? 'ddl-group' : ''}`}>
+               <div 
+                 className="folder-header" 
+                 onClick={() => toggleGroup(group.id)}
+                 style={group.isDDL ? { color: '#ff4d4d' } : undefined}
+               >
+                 <span className="expand-icon">{expandedGroups[group.id] ? "▾" : "▸"}</span>
+                 <span className="folder-name">{group.name} ({group.assignments.length})</span>
+               </div>
+               
+               {expandedGroups[group.id] && (
+                 <div className="folder-content">
+                   <div className="file-list-container">
+                      {group.assignments.map(a => {
+                        const isUnfinished = group.id === 'unfinished';
+                        return (
+                        <div 
+                          key={a.id} 
+                          className={`assignment-item ${selectedAssignment?.id === a.id ? 'selected' : ''} ${isUnfinished ? 'unfinished' : ''}`}
+                          onClick={() => handleSelectAssignment(a)}
+                        >
+                          <span className="assignment-name">{a.name}</span>
+                          <span className="assignment-date">{formatYmd(a.due_at)}</span>
+                        </div>
+                      );
+                      })}
+                   </div>
+                 </div>
+               )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }

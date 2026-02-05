@@ -16,7 +16,9 @@ function App() {
   const [settingsVersion, setSettingsVersion] = useState(0);
 
   useEffect(() => {
-    sessionStorage.setItem("assignments_refresh_token", Date.now().toString());
+    const now = Date.now().toString();
+    sessionStorage.setItem("assignments_refresh_token", now);
+    sessionStorage.setItem("files_refresh_token", now);
   }, []);
 
   // Initial sync and auto-polling for active tasks
@@ -54,7 +56,7 @@ function App() {
               setShowSettings(false);
             }}
           >
-            Canvas Downloader
+            Canvas Assistant
           </button>
           <button
             className={`sidebar-item ${activeApp === "notion" ? "active" : ""}`}
@@ -84,7 +86,7 @@ function App() {
               {activeApp === "home"
                 ? ""
                 : activeApp === "canvas"
-                ? "Canvas Downloader"
+                ? "Canvas Assistant"
                 : "Notion Sync"}
             </h1>
             <p>
@@ -115,10 +117,7 @@ function App() {
                 Backend is offline. Please ensure the Python sidecar is running.
               </div>
             ) : activeApp === "home" ? (
-              <Home
-                onNavigateToArch={() => {}}
-                onTriggerAurUpgrade={() => {}}
-              />
+                <Home />
             ) : activeApp === "canvas" ? (
               <CourseList settingsVersion={settingsVersion} />
             ) : (
