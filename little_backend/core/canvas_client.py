@@ -79,6 +79,8 @@ class CanvasClient:
                 "display_name": f.get("display_name"),
                 "folder_name": folder_map.get(f.get("folder_id"), ""),
                 "url": f.get("url"),
+                "updated_at": f.get("updated_at") or f.get("modified_at"),
+                "size": f.get("size"),
             }
             for f in files
         ]
