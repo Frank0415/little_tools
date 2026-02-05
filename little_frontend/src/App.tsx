@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useHealth } from "./hooks/useHealth";
+import { useDownloadStore } from "./store/useDownloadStore";
 import { CanvasSettings } from "./components/Settings";
 import { NotionSettings } from "./components/NotionSettings";
 import { CourseList } from "./components/CourseList";
@@ -8,14 +9,25 @@ import "./App.css";
 
 function App() {
   const isOnline = useHealth();
+  const updateTasks = useDownloadStore((s) => s.updateTasks);
+  const startPollingTask = useDownloadStore((s) => s.startPollingTask);
   const [showSettings, setShowSettings] = useState(false);
   const [activeApp, setActiveApp] = useState<"home" | "canvas" | "notion">("home");
   const [settingsVersion, setSettingsVersion] = useState(0);
 
-  // Debug: Log to console
+  // Initial sync and auto-polling for active tasks
   useEffect(() => {
-    console.log("App mounted, isOnline:", isOnline);
-  }, [isOnline]);
+    if (isOnline) {
+      updateTasks().then(() => {
+        const tasks = useDownloadStore.getState().tasks;
+        Object.values(tasks).forEach(task => {
+          if (task.status === "running" || task.status === "pending") {
+            startPollingTask(task.task_id);
+          }
+        });
+      });
+    }
+  }, [isOnline, updateTasks, startPollingTask]);
 
   return (
     <div className="app-shell">

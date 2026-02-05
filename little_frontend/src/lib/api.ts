@@ -112,9 +112,13 @@ export async function getCourses(): Promise<Course[]> {
   return response.json();
 }
 
-export async function startDownload(courseId: number): Promise<{ task_id: string }> {
+export async function startDownload(courseId: number, courseName?: string): Promise<{ task_id: string }> {
   const response = await fetch(`${API_BASE_URL}/api/downloader/download/${courseId}`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ course_name: courseName }),
   });
   if (!response.ok) {
     throw new Error("Failed to start download");
@@ -122,13 +126,13 @@ export async function startDownload(courseId: number): Promise<{ task_id: string
   return response.json();
 }
 
-export async function startSelectedDownload(courseId: number, fileIds: number[]): Promise<{ task_id: string }> {
+export async function startSelectedDownload(courseId: number, fileIds: number[], courseName?: string): Promise<{ task_id: string }> {
   const response = await fetch(`${API_BASE_URL}/api/downloader/download/${courseId}/selected`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ file_ids: fileIds }),
+    body: JSON.stringify({ file_ids: fileIds, course_name: courseName }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -141,6 +145,14 @@ export async function getTaskStatus(taskId: string): Promise<DownloadTask> {
   const response = await fetch(`${API_BASE_URL}/api/downloader/tasks/${taskId}`);
   if (!response.ok) {
     throw new Error("Failed to fetch task status");
+  }
+  return response.json();
+}
+
+export async function listAllTasks(): Promise<DownloadTask[]> {
+  const response = await fetch(`${API_BASE_URL}/api/downloader/tasks`);
+  if (!response.ok) {
+    throw new Error("Failed to list all tasks");
   }
   return response.json();
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { startDownload, getTaskStatus, DownloadTask, getSettings } from "../lib/api";
+import { startDownload, getSettings } from "../lib/api";
+import { useDownloadStore } from "../store/useDownloadStore";
 import { CourseDetail } from "./CourseDetail";
 
 type CourseListProps = {
@@ -7,10 +8,12 @@ type CourseListProps = {
 };
 
 export function CourseList({ settingsVersion = 0 }: CourseListProps) {
-  const [activeTasks, setActiveTasks] = useState<Record<string, DownloadTask>>({});
   const [courses, setCourses] = useState<Array<{ name: string; id: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<{ id: number; name: string } | null>(null);
+
+  const startPollingTask = useDownloadStore((s) => s.startPollingTask);
+  const tasks = useDownloadStore((s) => s.tasks);
 
   useEffect(() => {
     getSettings()
@@ -22,27 +25,14 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
 
   const handleDownload = async (courseId: number) => {
     try {
-      const { task_id } = await startDownload(courseId);
-      pollTask(task_id);
+      const course = courses.find((c) => c.id === courseId);
+      const { task_id } = await startDownload(courseId, course?.name);
+      startPollingTask(task_id);
     } catch (err: any) {
       alert(`Download failed: ${err.message}`);
     }
   };
 
-  const pollTask = async (taskId: string) => {
-    const check = async () => {
-      try {
-        const task = await getTaskStatus(taskId);
-        setActiveTasks((prev) => ({ ...prev, [taskId]: task }));
-        if (task.status === "running" || task.status === "pending") {
-          setTimeout(check, 1000);
-        }
-      } catch (err) {
-        console.error("Polling failed", err);
-      }
-    };
-    check();
-  };
 
   if (selectedCourse) {
     return (
@@ -87,10 +77,10 @@ export function CourseList({ settingsVersion = 0 }: CourseListProps) {
         </div>
       )}
 
-      {Object.values(activeTasks).length > 0 && (
+      {Object.values(tasks).length > 0 && (
         <div className="active-downloads">
           <h3>Active Downloads</h3>
-          {Object.values(activeTasks).map((task) => (
+          {Object.values(tasks).map((task) => (
             <div key={task.task_id} className="download-progress">
               <div className="progress-info">
                 <span>{task.status === "completed" ? "Completed" : task.current_file || "Starting..."}</span>

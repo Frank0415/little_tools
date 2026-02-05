@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactElement } from "react";
-import { getCourseFiles, CourseFile, startDownload, startSelectedDownload, getTaskStatus, DownloadTask } from "../lib/api";
+import { getCourseFiles, CourseFile, startDownload, startSelectedDownload } from "../lib/api";
+import { useDownloadStore } from "../store/useDownloadStore";
 
 type CourseDetailProps = {
   courseId: number;
@@ -21,7 +22,9 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Record<string, boolean>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
-  const [activeTasks, setActiveTasks] = useState<Record<string, DownloadTask>>({});
+  
+  const tasks = useDownloadStore((s) => s.tasks);
+  const startPollingTask = useDownloadStore((s) => s.startPollingTask);
 
   useEffect(() => {
     loadFiles();
@@ -104,8 +107,8 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
 
   const handleDownloadAll = async () => {
     try {
-      const { task_id } = await startDownload(courseId);
-      pollTask(task_id);
+      const { task_id } = await startDownload(courseId, courseName);
+      startPollingTask(task_id);
     } catch (err: any) {
       alert(`Download failed: ${err.message}`);
     }
@@ -123,27 +126,14 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
     }
 
     try {
-      const { task_id } = await startSelectedDownload(courseId, fileIds);
-      pollTask(task_id);
+      const { task_id } = await startSelectedDownload(courseId, fileIds, courseName);
+      startPollingTask(task_id);
     } catch (err: any) {
       alert(`Download failed: ${err.message}`);
     }
   };
 
-  const pollTask = async (taskId: string) => {
-    const check = async () => {
-      try {
-        const task = await getTaskStatus(taskId);
-        setActiveTasks((prev) => ({ ...prev, [taskId]: task }));
-        if (task.status === "running" || task.status === "pending") {
-          setTimeout(check, 1000);
-        }
-      } catch (err) {
-        console.error("Polling failed", err);
-      }
-    };
-    check();
-  };
+// Removed local pollTask function
 
   const renderFolder = (node: FolderNode, isRoot = false): ReactElement => {
     const isExpanded = expandedFolders[node.path] ?? false;
@@ -157,26 +147,12 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
     })();
     const allSelected = allFileIds.length > 0 && allFileIds.every((id) => selectedFiles[String(id)]);
 
-    // Color shading based on depth
-    const getDepthColor = (depth: number): string => {
-      const colors = [
-        "#e0e7ff", // depth 1 - lightest indigo
-        "#c7d2fe", // depth 2
-        "#a5b4fc", // depth 3
-        "#818cf8", // depth 4
-        "#6366f1", // depth 5+
-      ];
-      return colors[Math.min(depth - 1, colors.length - 1)];
-    };
-
-    const fileColor = "#f0fdf4"; // light green for files
-
     if (isRoot) {
       return (
         <>
           {Object.values(node.subfolders).map((subfolder) => renderFolder(subfolder))}
           {node.files.length > 0 && (
-            <div className="folder-node" style={{ backgroundColor: "#f9fafb" }}>
+            <div className="folder-node root-folder">
               <div className="folder-header">
                 <span className="folder-name">(Root Files)</span>
               </div>
@@ -185,11 +161,11 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
                   <div
                     key={file.id}
                     className="file-item"
-                    style={{ backgroundColor: fileColor }}
                   >
                     {file.id !== null && (
                       <input
                         type="checkbox"
+                        className="checkbox"
                         checked={!!selectedFiles[String(file.id)]}
                         onChange={(e) => toggleFile(file.id as number, e.target.checked)}
                       />
@@ -207,7 +183,7 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
     }
 
     return (
-      <div className="folder-node" style={{ backgroundColor: getDepthColor(node.depth) }}>
+      <div className="folder-node">
         <div className="folder-header">
           <button
             className="expand-btn"
@@ -219,6 +195,7 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
           </button>
           <input
             type="checkbox"
+            className="checkbox"
             checked={allFileIds.length > 0 && allSelected}
             onChange={(e) => toggleFolder(node, e.target.checked)}
           />
@@ -233,11 +210,11 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
                   <div
                     key={file.id}
                     className="file-item"
-                    style={{ backgroundColor: fileColor }}
                   >
                     {file.id !== null && (
                       <input
                         type="checkbox"
+                        className="checkbox"
                         checked={!!selectedFiles[String(file.id)]}
                         onChange={(e) => toggleFile(file.id as number, e.target.checked)}
                       />
@@ -284,10 +261,10 @@ export function CourseDetail({ courseId, courseName, onBack }: CourseDetailProps
         )}
       </div>
 
-      {Object.values(activeTasks).length > 0 && (
+      {Object.values(tasks).length > 0 && (
         <div className="active-downloads">
           <h3>Active Downloads</h3>
-          {Object.values(activeTasks).map((task) => (
+          {Object.values(tasks).map((task) => (
             <div key={task.task_id} className="download-task">
               <div className="task-header">
                 <span>Task {task.task_id}</span>

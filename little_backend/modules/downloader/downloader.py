@@ -26,6 +26,9 @@ class Downloader:
     def get_task(self, task_id: str) -> Optional[DownloadTask]:
         return self.tasks.get(task_id)
 
+    def get_all_tasks(self) -> List[DownloadTask]:
+        return list(self.tasks.values())
+
     async def download_file(self, url: str, dest_path: Path, task_id: str, file_name: str):
         task = self.tasks[task_id]
         task.current_file = file_name
@@ -69,14 +72,17 @@ class Downloader:
         task.downloaded_files += 1
         task.progress = (task.downloaded_files / task.total_files) * 100
 
-    async def run_course_download(self, course_id: int, task_id: str):
+    async def run_course_download(self, course_id: int, task_id: str, override_course_name: Optional[str] = None):
         task = self.tasks[task_id]
         task.status = TaskStatus.RUNNING
         
         try:
             settings = get_settings()
-            course_info = await self._get_course_info(course_id)
-            course_name = course_info.get("name", f"Course_{course_id}")
+            if override_course_name:
+                course_name = override_course_name
+            else:
+                course_info = await self._get_course_info(course_id)
+                course_name = course_info.get("name", f"Course_{course_id}")
             
             folders = await self.client.get_folders(course_id)
             all_files = []
@@ -107,14 +113,17 @@ class Downloader:
             task.status = TaskStatus.FAILED
             task.error = str(e)
 
-    async def run_selected_download(self, course_id: int, file_ids: list[int], task_id: str):
+    async def run_selected_download(self, course_id: int, file_ids: list[int], task_id: str, override_course_name: Optional[str] = None):
         task = self.tasks[task_id]
         task.status = TaskStatus.RUNNING
 
         try:
             settings = get_settings()
-            course_info = await self._get_course_info(course_id)
-            course_name = course_info.get("name", f"Course_{course_id}")
+            if override_course_name:
+                course_name = override_course_name
+            else:
+                course_info = await self._get_course_info(course_id)
+                course_name = course_info.get("name", f"Course_{course_id}")
 
             folders = await self.client.get_folders(course_id)
             folder_map = {f.get("id"): (f.get("name") or "") for f in folders}

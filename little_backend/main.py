@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from pathlib import Path
+from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import get_settings, save_settings, Settings, ensure_directories
 from core.canvas_client import CanvasClient
@@ -61,23 +62,27 @@ async def list_course_files(course_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class DownloadRequest(BaseModel):
+    course_name: Optional[str] = None
+
 @app.post("/api/downloader/download/{course_id}")
-async def start_download(course_id: int, background_tasks: BackgroundTasks):
+async def start_download(course_id: int, payload: DownloadRequest, background_tasks: BackgroundTasks):
     """Start downloading materials for a course."""
     task_id = downloader_instance.create_task(total_files=0) # Total will be updated
-    background_tasks.add_task(downloader_instance.run_course_download, course_id, task_id)
+    background_tasks.add_task(downloader_instance.run_course_download, course_id, task_id, payload.course_name)
     return {"task_id": task_id}
 
 
 class SelectedDownloadRequest(BaseModel):
     file_ids: list[int] = Field(default_factory=list)
+    course_name: Optional[str] = None
 
 
 @app.post("/api/downloader/download/{course_id}/selected")
 async def start_selected_download(course_id: int, payload: SelectedDownloadRequest, background_tasks: BackgroundTasks):
     """Start downloading selected files for a course."""
     task_id = downloader_instance.create_task(total_files=len(payload.file_ids))
-    background_tasks.add_task(downloader_instance.run_selected_download, course_id, payload.file_ids, task_id)
+    background_tasks.add_task(downloader_instance.run_selected_download, course_id, payload.file_ids, task_id, payload.course_name)
     return {"task_id": task_id}
 
 
@@ -88,6 +93,11 @@ async def get_task_status(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+@app.get("/api/downloader/tasks", response_model=List[DownloadTask])
+async def list_all_tasks():
+    """List all download tasks."""
+    return downloader_instance.get_all_tasks()
 
 @app.get("/api/canvas/courses/{course_id}/assignments")
 async def list_assignments(course_id: int):
